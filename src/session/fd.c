@@ -513,8 +513,10 @@ void
 wlc_fd_init(int argc, char *argv[], bool has_logind)
 {
    wlc.has_logind = has_logind;
-
    int sock[2];
+
+   wlc_log(WLC_LOG_INFO, "wlc_fd_init: E");
+   
    if (socketpair(AF_LOCAL, SOCK_SEQPACKET | SOCK_CLOEXEC, 0, sock) != 0)
       die("Failed to create fd passing unix domain socket pair: %m");
 
@@ -534,8 +536,14 @@ wlc_fd_init(int argc, char *argv[], bool has_logind)
       for (int i = 0; i < argc; ++i)
          strncpy(argv[i], (i == 0 ? "wlc" : ""), strlen(argv[i]));
 
+      wlc_log(WLC_LOG_INFO, "before drm load");
+
       drm_load();
+
+      wlc_log(WLC_LOG_INFO, "after drm load");
+
       communicate(sock[1], getppid());
+
       _exit(EXIT_SUCCESS);
    } else if (wlc.child < 0) {
       die("Fork failed");

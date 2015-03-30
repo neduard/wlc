@@ -71,33 +71,54 @@ open_tty(int vt)
 static int
 setup_tty(int fd)
 {
+   wlc_log(WLC_LOG_INFO, "setup_tty: E");
    if (fd < 0)
       return fd;
 
    struct stat st;
+   wlc_log(WLC_LOG_INFO, "fstat");
    if (fstat(fd, &st) == -1)
       die("Could not stat TTY fd");
 
+
+   wlc_log(WLC_LOG_INFO, "minor");
    wlc.vt = minor(st.st_rdev);
 
+   wlc_log(WLC_LOG_INFO, "major");
    if (major(st.st_rdev) != TTY_MAJOR || wlc.vt == 0)
       die("Not a valid VT");
 
    struct vt_stat state;
+
+   wlc_log(WLC_LOG_INFO, "VT_GETSTATE");
+
    if (ioctl(fd, VT_GETSTATE, &state) == -1)
       die("Could not get the current VT state");
 
    wlc.old_state.vt = state.v_active;
 
-   if (ioctl(fd, KDGKBMODE, &wlc.old_state.kb_mode))
-      die("Could not get keyboard mode");
 
+   wlc_log(WLC_LOG_INFO, "KDGETMODE");
    if (ioctl(fd, KDGETMODE, &wlc.old_state.console_mode))
       die("Could not get console mode");
 
+   wlc_log(WLC_LOG_INFO, "VT_ACTIVATE");
+   if (ioctl(fd, VT_ACTIVATE, wlc.vt) == -1)
+      die("Could not activate VT");
+
+   wlc_log(WLC_LOG_INFO, "VT_WAITACTIVE");
+   if (ioctl(fd, VT_WAITACTIVE, wlc.vt) == -1)
+      die("Could not wait for VT to become active");
+
+   wlc_log(WLC_LOG_INFO, "KDGKBMODE");
+   if (ioctl(fd, KDGKBMODE, &wlc.old_state.kb_mode))
+      die("Could not get keyboard mode");
+
+   wlc_log(WLC_LOG_INFO, "KDSKBMODE");
    if (ioctl(fd, KDSKBMODE, K_OFF) == -1)
       die("Could not set keyboard mode to K_OFF");
 
+   wlc_log(WLC_LOG_INFO, "KD_GRAPHICS");
    if (ioctl(fd, KDSETMODE, KD_GRAPHICS) == -1)
       die("Could not set console mode to KD_GRAPHICS");
 
@@ -107,16 +128,13 @@ setup_tty(int fd)
       .acqsig = SIGUSR2
    };
 
+   wlc_log(WLC_LOG_INFO, "VT_SETMODE");
    if (ioctl(fd, VT_SETMODE, &mode) == -1)
       die("Could not set VT mode");
 
-   if (ioctl(fd, VT_ACTIVATE, wlc.vt) == -1)
-      die("Could not activate VT");
-
-   if (ioctl(fd, VT_WAITACTIVE, wlc.vt) == -1)
-      die("Could not wait for VT to become active");
 
    wlc.old_state.altered = true;
+   wlc_log(WLC_LOG_INFO, "setup_tty: X");
    return fd;
 }
 
@@ -209,4 +227,5 @@ wlc_tty_init(int vt)
    action.sa_handler = sigusr_handler;
    sigaction(SIGUSR1, &action, NULL);
    sigaction(SIGUSR2, &action, NULL);
+   wlc_log(WLC_LOG_INFO, "wlc_tty_init: X");
 }
